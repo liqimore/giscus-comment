@@ -1,0 +1,49 @@
+name: Build Carlink Native APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Carlink source
+        uses: actions/checkout@v4
+        with:
+          repository: lvalen91/carlink
+          ref: main
+          path: carlink
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Build sideload debug APK
+        working-directory: carlink
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleSideloadDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: carlink-native-sideload-debug
+          path: carlink/app/build/outputs/apk/sideload/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
